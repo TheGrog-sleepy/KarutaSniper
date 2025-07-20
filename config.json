@@ -1,0 +1,44 @@
+{
+  "token": "",
+  "servers": [
+    1396001028293398628,
+    648031568756998155
+  ],
+  "channels": [
+    648044573536550922,
+    1396001073608790178,
+    776520559621570621
+  ],
+  "accuracy": "1.0",
+  "blaccuracy": "0.7",
+  "log_hits": true,
+  "log_collection": true,
+  "timestamp": true,
+  "update_check": true,
+  "autodrop": true,
+  "autodropchannel": 1396001073608790178,
+  "autofarm": false,
+  "resourcechannel": 0,
+  "dropdelay": 1820,
+  "randmin": 1,
+  "randmax": 2,
+  "debug": false,
+  "very_verbose": false,
+  "check_print": true,
+  "print_number": 1000,
+  "tofu": {
+    "enabled": false,
+    "channels": [
+      858004885809922078,
+      857978372688445481
+    ],
+    "summon": true,
+    "summon_channel": 858004885809922078,
+    "check_print": true,
+    "grab_random": false,
+    "dropdelay": 1269,
+    "randmin": 69,
+    "randmax": 300,
+    "tcc": "--psm 6 --oem 3 --user-words '\\lib\\characters.txt' -c tessedit_char_whitelist='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@&0123456789/: '"
+  }
+}
