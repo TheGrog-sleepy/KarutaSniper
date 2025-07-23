@@ -1,13 +1,13 @@
 {
-  "token": "YOUR_TOKEN_HERE",
+  "token": "YOUR_TOKEN_HERE", // Never share this publicly
   "servers": [
     1396001028293398628,
     648031568756998155
   ],
   "channels": [
-    648044573536550922,
-    1396001073608790178,
-    776520559621570621
+    648044573536550922,  // Known Karuta channel
+    1396001073608790178, // Your autodrop channel
+    776520559621570621   // Another Karuta channel
   ],
   "accuracy": "1.0",
   "blaccuracy": "0.7",
@@ -18,13 +18,26 @@
   "autodrop": true,
   "autodropchannel": 1396001073608790178,
   "autofarm": false,
-  "resourcechannel": 0,
-  "dropdelay": 1820,
-  "randmin": 1,
-  "randmax": 2,
+  "dropdelay": 1820,       // ~30 minute drop interval
+  "randmin": 1,            // +1 second variance
+  "randmax": 2,            // +2 seconds variance
   "debug": false,
   "very_verbose": false,
-  "check_print": true,
-  "print_number": 1000,
-  "webhook_url": "YOUR_DISCORD_WEBHOOK_URL_HERE"
+  "check_print": true,     // Checking print numbers
+  "print_number": 1000,    // Grabbing prints ≤1000
+  "tofu": {
+    "enabled": false,      // Tofu module disabled
+    "channels": [
+      858004885809922078,
+      857978372688445481
+    ],
+    "summon": true,
+    "summon_channel": 858004885809922078,
+    "check_print": true,
+    "grab_random": false,
+    "dropdelay": 1269,
+    "randmin": 69,
+    "randmax": 300,
+    "tcc": "--psm 6 --oem 3 --user-words '\\lib\\characters.txt' -c tessedit_char_whitelist='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@&0123456789/: '"
+  }
 }
