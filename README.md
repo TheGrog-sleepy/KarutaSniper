@@ -30,13 +30,38 @@ A bot to automate collecting cards for the discord game Karuta
 
 ## How to use
 
-Run main.py, Characters and Animes to snipe are in keywords
+How to Use:
+Configure config.json with your settings
+
+Add your Discord bot token
+
+Set up a webhook URL if desired
+
+Create keywords directory with your lists:
+
+animes.txt
+
+characters.txt
+
+aniblacklist.txt
+
+charblacklist.txt
+
+Run the bot
+
+The bot will now:
+
+Automatically snipe cards matching your criteria
+
+Send webhook notifications when cards are grabbed
+
+Handle errors gracefully and continue running
+
+Check for updates and notify you
+
+Logs all activity to console and files
 
 
-Note that sometimes the ocr can misread names and pick up cards you dont want. This is especially true for reading print numbers, so expect falses until it is improved
-
-If you see something like H1 in the update notice, you should probably update as it stands for hotfix and usually fixes
-major bugs
 
 
 ## Feature Explanation
