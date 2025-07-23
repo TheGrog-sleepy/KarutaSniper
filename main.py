@@ -27,29 +27,12 @@ init(convert=True)
 class ErrorHandler:
     @staticmethod
     async def handle(error: Exception, context: str = "", critical: bool = False) -> None:
-        """Centralized error handling with logging and optional webhook notification"""
+        """Centralized error handling with logging"""
         error_msg = f"{Fore.RED}ERROR [{context}]: {str(error)}{Fore.RESET}"
         print(error_msg)
         
         if debug:
             traceback.print_exc()
-        
-        if critical and webhook_url:
-            await ErrorHandler._send_error_webhook(error, context)
-    
-    @staticmethod
-    async def _send_error_webhook(error: Exception, context: str) -> None:
-        """Send error notifications to webhook"""
-        try:
-            embed = {
-                "title": "⚠️ Bot Error Occurred",
-                "description": f"**Context**: {context}\n```{str(error)[:1000]}```",
-                "color": 0xff0000,
-                "timestamp": datetime.utcnow().isoformat()
-            }
-            requests.post(webhook_url, json={"embeds": [embed]}, timeout=10)
-        except Exception as e:
-            print(f"{Fore.RED}Failed to send error webhook: {e}{Fore.RESET}")
 
 # ======================
 # CONFIGURATION LOADING
@@ -97,7 +80,8 @@ def load_config() -> Dict[str, Any]:
             "print_number": int(get_config("print_number", "1000")) if get_config("check_print", False) else None,
             "autofarm": bool(get_config("autofarm", False)),
             "resourcechannel": get_config("resourcechannel") if get_config("autofarm", False) else None,
-            "webhook_url": get_config("webhook_url", "")
+            "reaction_delay_min": float(get_config("reaction_delay_min", "0.5")),
+            "reaction_delay_max": float(get_config("reaction_delay_max", "1.0"))
         }
     except ValueError as e:
         raise RuntimeError(f"Invalid config value: {str(e)}")
@@ -109,7 +93,7 @@ try:
     # Constants
     MATCH_PATTERN = "(is dropping [3-4] cards!)|(I'm dropping [3-4] cards since this server is currently active!)"
     OCR_PATH = "temp"
-    VERSION = "v2.3.2"
+    VERSION = "v2.3.2-user"
     UPDATE_URL = "https://raw.githubusercontent.com/TheGrog-sleepy/thegoatster/master/version.txt"
     REPO_URL = "https://github.com/TheGrog-sleepy/thegoatster"
     
@@ -131,7 +115,8 @@ try:
     cprint = config["check_print"]
     autofarm = config["autofarm"]
     verbose = config["very_verbose"]
-    webhook_url = config["webhook_url"]
+    reaction_delay_min = config["reaction_delay_min"]
+    reaction_delay_max = config["reaction_delay_max"]
     
     if autofarm:
         resourcechannel = config["resourcechannel"]
@@ -254,49 +239,37 @@ async def capture_screenshot() -> Optional[bytes]:
         return None
 
 # ======================
-# WEBHOOK FUNCTIONS
+# TEXT MATCHING FUNCTIONS
 # ======================
-async def send_webhook(card_name: str, quality: str, image_bytes: Optional[bytes] = None) -> bool:
-    """Send card grab notification to Discord webhook"""
-    if not webhook_url:
-        return False
-    
-    try:
-        embed = {
-            "title": "🎴 Card Obtained!",
-            "description": f"**{card_name}**\nQuality: {quality}",
-            "color": 0x00ff00,
-            "timestamp": datetime.utcnow().isoformat(),
-            "footer": {"text": f"Karuta Sniper {VERSION}"}
-        }
-        
-        files = {}
-        if image_bytes:
-            files["file"] = ("card.png", image_bytes, "image/png")
-        
-        try:
-            if files:
-                response = requests.post(
-                    webhook_url,
-                    files=files,
-                    data={"payload_json": json.dumps({"embeds": [embed]})},
-                    timeout=10
-                )
-            else:
-                response = requests.post(
-                    webhook_url,
-                    json={"embeds": [embed]},
-                    timeout=10
-                )
-            
-            response.raise_for_status()
+def is_something(text: str, wordlist: List[str], threshold: float) -> bool:
+    """Check if text matches any word in wordlist with given threshold"""
+    text = text.lower().strip()
+    for word in wordlist:
+        word = word.lower().strip()
+        if word in text or text in word:
             return True
-        except requests.RequestException as e:
-            await ErrorHandler.handle(e, "Webhook request")
+        if len(text) > 3 and len(word) > 3:
+            if text[:4] == word[:4]:
+                return True
+    return False
+
+# ======================
+# FILE WATCHER CLASS
+# ======================
+class FileWatcher:
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+        self.last_modified = os.path.getmtime(file_path) if os.path.exists(file_path) else 0
+        
+    def watch(self) -> bool:
+        """Check if file has been modified"""
+        if not os.path.exists(self.file_path):
             return False
             
-    except Exception as e:
-        await ErrorHandler.handle(e, "Webhook preparation")
+        current_modified = os.path.getmtime(self.file_path)
+        if current_modified > self.last_modified:
+            self.last_modified = current_modified
+            return True
         return False
 
 # ======================
@@ -315,7 +288,6 @@ class KarutaSniper(discord.Client):
         self.missed: int = 0
         self.collected: int = 0
         self.cardnum: int = 0
-        self.buttons: Optional[List[discord.Button]] = None
         
         if autofarm:
             self.button: Optional[discord.Button] = None
@@ -358,22 +330,6 @@ class KarutaSniper(discord.Client):
             
             # Load keyword files
             await self.update_files()
-            
-            # Subscribe to guilds
-            for guild_id in guilds:
-                try:
-                    guild = self.get_guild(guild_id)
-                    if guild:
-                        await guild.subscribe(
-                            typing=True, 
-                            activities=False, 
-                            threads=False,
-                            member_updates=False
-                        )
-                    else:
-                        tprint(f"{Fore.YELLOW}Warning: Not in server {guild_id}{Fore.RESET}")
-                except Exception as e:
-                    await ErrorHandler.handle(e, f"Subscribing to guild {guild_id}")
             
             # Start background tasks
             asyncio.create_task(self.cooldown())
@@ -549,9 +505,9 @@ class KarutaSniper(discord.Client):
         
         # Check character matches
         for i, character in enumerate(charlist):
-            if (api.isSomething(character, self.chars, accuracy) and
-                not api.isSomething(character, self.charblacklist, accuracy) and
-                not api.isSomething(anilist[i], self.aniblacklist, blaccuracy)):
+            if (is_something(character, self.chars, accuracy) and
+                not is_something(character, self.charblacklist, accuracy) and
+                not is_something(anilist[i], self.aniblacklist, blaccuracy)):
                 
                 await self.handle_match(
                     message, 
@@ -562,9 +518,9 @@ class KarutaSniper(discord.Client):
         
         # Check anime matches
         for i, anime in enumerate(anilist):
-            if (api.isSomething(anime, self.animes, accuracy) and
-                not api.isSomething(charlist[i], self.charblacklist, accuracy) and
-                not api.isSomething(anime, self.aniblacklist, blaccuracy)):
+            if (is_something(anime, self.animes, accuracy) and
+                not is_something(charlist[i], self.charblacklist, accuracy) and
+                not is_something(anime, self.aniblacklist, blaccuracy)):
                 
                 await self.handle_match(
                     message, 
@@ -611,7 +567,9 @@ class KarutaSniper(discord.Client):
         """Handle clicking a button on the card drop"""
         def edit_check(before: discord.Message, after: discord.Message) -> bool:
             return (before.id == message.id and 
-                    not after.components[0].children[0].disabled)
+                    len(after.components) > 0 and 
+                    len(after.components[0].children) > index and
+                    not after.components[0].children[index].disabled)
         
         try:
             # Wait for message to become clickable
@@ -620,7 +578,7 @@ class KarutaSniper(discord.Client):
                 check=edit_check,
                 timeout=10
             )
-            await asyncio.sleep(random.uniform(0.55, 1.08))
+            await asyncio.sleep(random.uniform(reaction_delay_min, reaction_delay_max))
             await edited[1].components[0].children[index].click()
             await self.after_click()
         except asyncio.TimeoutError:
@@ -630,27 +588,9 @@ class KarutaSniper(discord.Client):
 
     async def handle_reaction(self, message: discord.Message, emoji: str) -> None:
         """Handle adding a reaction to the card drop"""
-        def reaction_check(reaction: discord.Reaction, user: discord.User) -> bool:
-            return reaction.message.id == message.id
-        
         try:
-            reaction = await self.wait_for(
-                "reaction_add",
-                check=reaction_check,
-                timeout=10
-            )
-            await self.react_add(reaction[0], emoji)
-        except asyncio.TimeoutError:
-            await ErrorHandler.handle(Exception("Timed out waiting for reaction"), "Reaction add")
-        except Exception as e:
-            await ErrorHandler.handle(e, "Reaction add")
-
-    async def react_add(self, reaction: discord.Reaction, emoji: str) -> None:
-        """Add a reaction to a message"""
-        try:
-            dprint(f"{Fore.BLUE}Attempting to react with {emoji}")
-            await asyncio.sleep(random.uniform(0.55, 1.08))
-            await reaction.message.add_reaction(emoji)
+            await asyncio.sleep(random.uniform(reaction_delay_min, reaction_delay_max))
+            await message.add_reaction(emoji)
             self.timer += 60
             self.missed += 1
             dprint(f"{Fore.BLUE}Reacted successfully{Fore.RESET}")
@@ -691,14 +631,6 @@ class KarutaSniper(discord.Client):
                         f.write(log_entry)
                 except IOError as e:
                     await ErrorHandler.handle(e, "Writing to collection log")
-            
-            # Send webhook notification
-            if webhook_url:
-                try:
-                    screenshot = await capture_screenshot()
-                    await send_webhook(card_name, quality, screenshot)
-                except Exception as e:
-                    await ErrorHandler.handle(e, "Sending webhook notification")
         
         except Exception as e:
             await ErrorHandler.handle(e, "Processing card grab")
@@ -764,7 +696,7 @@ class KarutaSniper(discord.Client):
 
     async def filewatch(self, path: str) -> None:
         """Watch for file changes and reload if modified"""
-        watcher = api.FileWatch(path)
+        watcher = FileWatcher(path)
         dprint(f"Filewatch activated for {path}")
         while True:
             await asyncio.sleep(2)
@@ -776,7 +708,7 @@ class KarutaSniper(discord.Client):
 
     async def configwatch(self, path: str) -> None:
         """Watch for config changes and update variables"""
-        watcher = api.FileWatch(path)
+        watcher = FileWatcher(path)
         while True:
             await asyncio.sleep(1)
             try:
@@ -821,19 +753,12 @@ if __name__ == "__main__":
     try:
         # Token handling
         if not token:
-            inp = input(f"{Fore.RED}No token found, would you like to find tokens from your PC? (y/n): {Fore.RESET}")
-            if inp.lower() == "y":
-                try:
-                    token = api.get_tokens(False)
-                    input("Press any key to exit...")
-                    sys.exit(0)
-                except Exception as e:
-                    asyncio.run(ErrorHandler.handle(e, "Token retrieval", critical=True))
-                    sys.exit(1)
-            else:
+            inp = input(f"{Fore.RED}No token found in config.json. Please enter your token: {Fore.RESET}")
+            token = inp.strip()
+            if not token:
                 sys.exit(0)
         
-        # Create and run client
+        # Create and run client with user account
         intents = discord.Intents.default()
         intents.message_content = True
         
@@ -841,7 +766,8 @@ if __name__ == "__main__":
         tprint(f"{Fore.GREEN}Starting Bot{Fore.RESET}")
         
         try:
-            client.run(token)
+            # Run with user account (self-bot)
+            client.run(token, bot=False)
         except discord.LoginFailure as e:
             asyncio.run(ErrorHandler.handle(e, "Discord login", critical=True))
             sys.exit(1)
