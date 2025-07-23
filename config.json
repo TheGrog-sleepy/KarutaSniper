@@ -1,5 +1,5 @@
 {
-  "token": "",
+  "token": "YOUR_TOKEN_HERE",
   "servers": [
     1396001028293398628,
     648031568756998155
@@ -26,19 +26,5 @@
   "very_verbose": false,
   "check_print": true,
   "print_number": 1000,
-  "tofu": {
-    "enabled": false,
-    "channels": [
-      858004885809922078,
-      857978372688445481
-    ],
-    "summon": true,
-    "summon_channel": 858004885809922078,
-    "check_print": true,
-    "grab_random": false,
-    "dropdelay": 1269,
-    "randmin": 69,
-    "randmax": 300,
-    "tcc": "--psm 6 --oem 3 --user-words '\\lib\\characters.txt' -c tessedit_char_whitelist='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@&0123456789/: '"
-  }
+  "webhook_url": "YOUR_DISCORD_WEBHOOK_URL_HERE"
 }
