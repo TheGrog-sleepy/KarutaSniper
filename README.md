@@ -101,8 +101,7 @@ I wont explain features that explain themselves
 - support for bots similar to karuta (like SOFI, Mudae, ~~Tofu~~); this might never happen/take a long time to be implemented
 - improve print numbers
 - improve ocr
-- make it less buggy (especially tofu)
-- first run setup
+- make it less buggy
 
 ## Credits
 
