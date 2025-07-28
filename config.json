@@ -1,7 +1,7 @@
 {
   "token": "YourTokenHere",
   "servers": [
-    648031568756998155,
+    648031568756998155
   ],
   "channels": [
     648044573536550922,
@@ -23,6 +23,9 @@
   "very_verbose": false,
   "check_print": true,
   "print_number": 1000,
+  "event_settings": {
+    "prioritize_watermelon": true
+  },
   "blessing_settings": {
     "auto_drop_after_generosity": true,
     "evasion_cooldown_reset": true
