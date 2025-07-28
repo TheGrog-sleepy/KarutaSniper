@@ -1,12 +1,10 @@
 {
   "token": "YourTokenHere",
   "servers": [
-    1396001028293398628,
-    648031568756998155
+    648031568756998155,
   ],
   "channels": [
     648044573536550922,
-    1396001073608790178,
     776520559621570621,
     826968791992500306
   ],
@@ -17,7 +15,7 @@
   "timestamp": true,
   "update_check": true,
   "autodrop": true,
-  "autodropchannel": 1396001073608790178,
+  "autodropchannel": 648044573536550922,
   "dropdelay": 1820,
   "randmin": 1,
   "randmax": 2,
