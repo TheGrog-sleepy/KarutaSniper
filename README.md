@@ -22,20 +22,20 @@ A bot to automate collecting cards for the discord game Karuta
 ## Installation
 
 1. Download repo
-2. Run install.bat (if on windows) - its a file in the zip folder
+2. Run install_dependencys (if on windows) - its a file in the zip folder
 3. If that doesnt work or you are on a different os follow the instructions below
 4. Install requirements
 5. Install tesseract-ocr (and add to path)
    1. If on windows prebuilt binaries can be found at https://github.com/UB-Mannheim/tesseract/wiki
+6. Open windows powershell and paste this command py -3 -m pip install -U discord.py-self
+that is all dependencys
 
 ## How to use
 
 How to Use:
 Configure config.json with your settings
 
-Add your Discord bot token
-
-Set up a webhook URL if desired
+Add your Discord user token token
 
 Create keywords directory with your lists:
 
@@ -105,8 +105,7 @@ I wont explain features that explain themselves
 
 ## Credits
 
-- [RiccardoLunardi](https://github.com/riccardolunardi/KarutaBotHack) for the code written in ocr.py
-- Vu for the autofarm code
+To me and me only
 
 ## Disclaimer
 
@@ -117,6 +116,6 @@ Also dont be that guy who clones this repo and then updates config.json with his
 ## Contact Me
 This is my current discord tag, and only public way to contact me (besides github)
 
-Discord: ```NoMeansNo#5750```
+Discord: ```Thegrogster_```
 
-Just Please use your brain when communicating, [don't start by saying hi and waiting for a response](https://nohello.net)
+Just Please use your brain when communicating,
