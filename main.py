@@ -18,6 +18,86 @@ from lib import api
 from lib.ocr import *
 
 init(convert=True)
+
+def first_run_setup():
+    required_dirs = ["temp", "temp/char", "keywords"]
+    for directory in required_dirs:
+        os.makedirs(directory, exist_ok=True)
+    
+    if not os.path.exists("config.json"):
+        default_config = {
+            "token": "",
+            "servers": [],
+            "channels": [],
+            "accuracy": 0.85,
+            "blaccuracy": 0.7,
+            "log_hits": True,
+            "log_collection": True,
+            "timestamp": True,
+            "update_check": True,
+            "autodrop": False,
+            "autodropchannel": "",
+            "dropdelay": 1820,
+            "randmin": 1,
+            "randmax": 2,
+            "debug": False,
+            "very_verbose": False,
+            "check_print": True,
+            "print_number": 1000,
+            "event_settings": {
+                "prioritize_watermelon": True
+            },
+            "blessing_settings": {
+                "auto_drop_after_generosity": True,
+                "evasion_cooldown_reset": True
+            },
+            "ocr_settings": {
+                "tesseract_path": "",
+                "custom_config": "--psm 6 --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@&0123456789/:- ",
+                "confidence_threshold": 70
+            },
+            "safety": {
+                "max_actions_per_minute": 10,
+                "random_delay_range": [0.5, 2.5],
+                "typing_simulation": False
+            }
+        }
+        with open("config.json", "w") as f:
+            json.dump(default_config, f, indent=4)
+        
+        print(f"{Fore.GREEN}Created default config.json. Please fill in your details before running again.{Fore.RESET}")
+        input("Press Enter to exit...")
+        sys.exit(0)
+    
+    keyword_files = {
+        "animes.txt": "# Add anime names here (one per line)\n# Example:\n# Attack on Titan\n# Jujutsu Kaisen",
+        "characters.txt": "# Add character names here (one per line)\n# Example:\n# Eren Yeager\n# Gojo Satoru",
+        "aniblacklist.txt": "# Add blacklisted anime here (one per line)",
+        "charblacklist.txt": "# Add blacklisted characters here (one per line)"
+    }
+    
+    for filename, content in keyword_files.items():
+        path = os.path.join("keywords", filename)
+        if not os.path.exists(path):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+def check_requirements():
+    try:
+        import discord
+        import pytesseract
+        import PIL
+    except ImportError as e:
+        print(f"{Fore.RED}Missing required packages: {e}{Fore.RESET}")
+        print(f"{Fore.CYAN}Please install requirements with: pip install -r requirements.txt{Fore.RESET}")
+        input("Press Enter to exit...")
+        sys.exit(1)
+
+if not all(os.path.exists(f) for f in ["config.json", "keywords/animes.txt", "keywords/characters.txt"]):
+    print(f"{Fore.YELLOW}Welcome to Karuta Sniper! Running first-time setup...{Fore.RESET}")
+    first_run_setup()
+check_requirements()
+
 match = "(is dropping [3-4] cards!)|(I'm dropping [3-4] cards since this server is currently active!)|(special event drop!)"
 path_to_ocr = "temp"
 v = "v2.3.2"
@@ -137,7 +217,6 @@ class Main(discord.Client):
         ):
             return
 
-        # Improved blessing detection
         if message.content.startswith(f"<@{str(self.user.id)}>, your ") and "blessing has activated!" in message.content:
             await asyncio.sleep(random.uniform(0.5, 1.5))
             if "Evasion" in message.content:
@@ -146,7 +225,6 @@ class Main(discord.Client):
             elif "Generosity" in message.content and autodrop:
                 self.timer = 0
                 dprint("Generosity blessing detected - resetting drop cooldown")
-                # Immediately try to drop cards if cooldown was reset
                 await self.get_channel(autodropchannel).send("kd")
                 tprint(f"{Fore.LIGHTWHITE_EX}Auto Dropped Cards after blessing")
             return
@@ -173,7 +251,6 @@ class Main(discord.Client):
             with open("temp\\card.webp", "wb") as file:
                 file.write(requests.get(message.attachments[0].url).content)
             
-            # Check for watermelon event
             is_watermelon_event = "special event drop" in message.content.lower()
             img = Image.open("temp\\card.webp")
             width, height = img.size
@@ -200,14 +277,11 @@ class Main(discord.Client):
                             f"{path_to_ocr}\\char\\print{a + 1}.png"
                         )
             else:
-                # Determine if it's a regular 4-card drop or event with watermelon
-                if width == 836 and height < 400:  # Regular 4-card drop
+                if width == 836 and height < 400:
                     self.cardnum = 4
-                else:  # Event drop with watermelon
+                else:
                     self.cardnum = 5
-                    # Watermelon is usually in the 5th position (index 4)
                     self.watermelon_pos = 4
-                    # Check if watermelon is in 4th position instead
                     if height < 500:
                         self.watermelon_pos = 3
 
@@ -308,16 +382,13 @@ class Main(discord.Client):
                     case 4:
                         return "5️⃣"
 
-            # First check for watermelon option if enabled
             if self.watermelon_pos is not None and prioritize_watermelon:
                 tprint(f"{Fore.GREEN}[{message.channel.name}] Found Watermelon Event - Prioritizing Grab{Fore.RESET}")
                 self.url = message.attachments[0].url
                 if loghits:
                     with open("log.txt", "a") as ff:
                         if timestamp:
-                            ff.write(
-                                f"{current_time()} - Watermelon Event - {self.url}\n"
-                            )
+                            ff.write(f"{current_time()} - Watermelon Event - {self.url}\n")
                         else:
                             ff.write(f"Watermelon Event - {self.url}\n")
                 if isbutton(cid):
@@ -326,15 +397,12 @@ class Main(discord.Client):
                     await self.buttons[self.watermelon_pos].click()
                     await self.afterclick()
                 else:
-                    reaction = await self.wait_for(
-                        "reaction_add", check=check
-                    )
+                    reaction = await self.wait_for("reaction_add", check=check)
                     await self.react_add(reaction, emoji(self.watermelon_pos))
-                return  # Skip normal card processing if we grabbed watermelon
+                return
             elif self.watermelon_pos is not None:
                 tprint(f"{Fore.YELLOW}[{message.channel.name}] Watermelon Event detected but skipping (disabled in config){Fore.RESET}")
 
-            # Normal card processing
             for i, character in enumerate(charlist):
                 if (
                         api.isSomething(character, self.chars, accuracy)
@@ -348,9 +416,7 @@ class Main(discord.Client):
                     if loghits:
                         with open("log.txt", "a") as ff:
                             if timestamp:
-                                ff.write(
-                                    f"{current_time()} - Character: {character} - {self.url}\n"
-                                )
+                                ff.write(f"{current_time()} - Character: {character} - {self.url}\n")
                             else:
                                 ff.write(f"Character: {character} - {self.url}\n")
                     if isbutton(cid):
@@ -359,9 +425,7 @@ class Main(discord.Client):
                         await self.buttons[i].click()
                         await self.afterclick()
                     else:
-                        reaction = await self.wait_for(
-                            "reaction_add", check=check
-                        )
+                        reaction = await self.wait_for("reaction_add", check=check)
                         await self.react_add(reaction, emoji(i))
             for i, anime in enumerate(anilist):
                 if (
@@ -376,9 +440,7 @@ class Main(discord.Client):
                     if loghits:
                         with open("log.txt", "a") as ff:
                             if timestamp:
-                                ff.write(
-                                    f"{current_time()} - Anime: {anime} - {self.url}\n"
-                                )
+                                ff.write(f"{current_time()} - Anime: {anime} - {self.url}\n")
                             else:
                                 ff.write(f"Anime: {anime} - {self.url}\n")
                     if isbutton(cid):
@@ -387,9 +449,7 @@ class Main(discord.Client):
                         await self.buttons[i].click()
                         await self.afterclick()
                     else:
-                        reaction = await self.wait_for(
-                            "reaction_add", check=check
-                        )
+                        reaction = await self.wait_for("reaction_add", check=check)
                         await self.react_add(reaction, emoji(i))
             if cprint:
                 for i, prin in enumerate(printlist):
@@ -405,9 +465,7 @@ class Main(discord.Client):
                         if loghits:
                             with open("log.txt", "a") as ff:
                                 if timestamp:
-                                    ff.write(
-                                        f"{current_time()} - Print Number {prin} - {self.url}\n"
-                                    )
+                                    ff.write(f"{current_time()} - Print Number {prin} - {self.url}\n")
                                 else:
                                     ff.write(f"Print Number {prin} - {self.url}\n")
                         if isbutton(cid):
@@ -416,9 +474,7 @@ class Main(discord.Client):
                             await self.buttons[i].click()
                             await self.afterclick()
                         else:
-                            reaction = await self.wait_for(
-                                "reaction_add", check=check
-                            )
+                            reaction = await self.wait_for("reaction_add", check=check)
                             await self.react_add(reaction, emoji(i))
         elif re.search(
                 f"<@{str(self.user.id)}> took the \*\*.*\*\* card `.*`!|<@{str(self.user.id)}> fought off .* and took the \*\*.*\*\* card `.*`!",
@@ -437,9 +493,7 @@ class Main(discord.Client):
             if logcollection:
                 with open("log.txt", "a") as ff:
                     if timestamp:
-                        ff.write(
-                            f"{current_time()} - Card: {a.group(1)} - {self.url}\n"
-                        )
+                        ff.write(f"{current_time()} - Card: {a.group(1)} - {self.url}\n")
                     else:
                         ff.write(f"Card: {a.group(1)} - {self.url}\n")
 
@@ -463,8 +517,7 @@ class Main(discord.Client):
                 self.timer -= 1
                 if title:
                     await asyncio.create_subprocess_shell(
-                        f"title Karuta Sniper {v} - Collected {self.collected} cards - Missed {self.missed} cards - On "
-                        f"cooldown for {self.timer} seconds"
+                        f"title Karuta Sniper {v} - Collected {self.collected} cards - Missed {self.missed} cards - On cooldown for {self.timer} seconds"
                     )
             elif title:
                 await asyncio.create_subprocess_shell(
@@ -484,8 +537,7 @@ class Main(discord.Client):
         with open("keywords\\charblacklist.txt") as ff:
             self.charblacklist = ff.read().splitlines()
         tprint(
-            f"{Fore.MAGENTA}Loaded {len(self.animes)} animes, {len(self.aniblacklist)} blacklisted animes, "
-            f"{len(self.chars)} characters, {len(self.charblacklist)} blacklisted characters")
+            f"{Fore.MAGENTA}Loaded {len(self.animes)} animes, {len(self.aniblacklist)} blacklisted animes, {len(self.chars)} characters, {len(self.charblacklist)} blacklisted characters")
 
     async def filewatch(self, path):
         bruh = api.FileWatch(path)
@@ -549,9 +601,7 @@ def update_check():
     return requests.get(url=update_url).text
 
 if token == "":
-    inp = input(
-        f"{Fore.RED}No token found, would you like to find tokens from your pc? (y/n): {Fore.RESET}"
-    )
+    inp = input(f"{Fore.RED}No token found, would you like to find tokens from your pc? (y/n): {Fore.RESET}")
     if inp == "y":
         token = api.get_tokens(False)
         input("Press any key to exit...")
