@@ -140,3 +140,6 @@ v2.2.3
 - major improvements
 - Added Blessing detection
 - Working on discord webhooks and other things
+v2.2.4
+-minor improvments
+-Added new event checks
