@@ -137,4 +137,6 @@ v2.2.2
 - vastly improve ocr
 
 v2.2.3
-- minor improvements
+- major improvements
+- Added Blessing detection
+- Working on discord webhooks and other things
