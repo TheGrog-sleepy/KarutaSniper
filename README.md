@@ -17,6 +17,7 @@ A bot to automate collecting cards for the discord game Karuta
 ## Known Issues
 
 -Blessing detection messes up sometimes for generosity
+-Just added new event stuffs so hopefully that works
 
 
 ## Installation
