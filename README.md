@@ -12,11 +12,11 @@ A bot to automate collecting cards for the discord game Karuta
 7. [Credits](#credits)
 8. [Disclaimer](#disclaimer)
 9. [Contact Me](#contact-me)
+10. DO NOT USE WITH MORE THAN 4 ACCOUNTS IN MAIN SERVER "risk of ban"
 
 ## Known Issues
 
-- print numbers and autofarm might be buggy
-- i fucked detection up; it might detect the same a few times
+-Blessing detection messes up sometimes for generosity
 
 
 ## Installation
