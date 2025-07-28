@@ -1,43 +1,42 @@
 {
-  "token": "YOUR_TOKEN_HERE", // Never share this publicly
+  "token": "YourTokenHere",
   "servers": [
     1396001028293398628,
     648031568756998155
   ],
   "channels": [
-    648044573536550922,  // Known Karuta channel
-    1396001073608790178, // Your autodrop channel
-    776520559621570621   // Another Karuta channel
+    648044573536550922,
+    1396001073608790178,
+    776520559621570621,
+    826968791992500306
   ],
-  "accuracy": "1.0",
-  "blaccuracy": "0.7",
+  "accuracy": 0.85,
+  "blaccuracy": 0.7,
   "log_hits": true,
   "log_collection": true,
   "timestamp": true,
   "update_check": true,
   "autodrop": true,
   "autodropchannel": 1396001073608790178,
-  "autofarm": false,
-  "dropdelay": 1820,       // ~30 minute drop interval
-  "randmin": 1,            // +1 second variance
-  "randmax": 2,            // +2 seconds variance
+  "dropdelay": 1820,
+  "randmin": 1,
+  "randmax": 2,
   "debug": false,
   "very_verbose": false,
-  "check_print": true,     // Checking print numbers
-  "print_number": 1000,    // Grabbing prints ≤1000
-  "tofu": {
-    "enabled": false,      // Tofu module disabled
-    "channels": [
-      858004885809922078,
-      857978372688445481
-    ],
-    "summon": true,
-    "summon_channel": 858004885809922078,
-    "check_print": true,
-    "grab_random": false,
-    "dropdelay": 1269,
-    "randmin": 69,
-    "randmax": 300,
-    "tcc": "--psm 6 --oem 3 --user-words '\\lib\\characters.txt' -c tessedit_char_whitelist='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@&0123456789/: '"
+  "check_print": true,
+  "print_number": 1000,
+  "blessing_settings": {
+    "auto_drop_after_generosity": true,
+    "evasion_cooldown_reset": true
+  },
+  "ocr_settings": {
+    "tesseract_path": "",
+    "custom_config": "--psm 6 --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@&0123456789/:- ",
+    "confidence_threshold": 70
+  },
+  "safety": {
+    "max_actions_per_minute": 10,
+    "random_delay_range": [0.5, 2.5],
+    "typing_simulation": false
   }
 }
