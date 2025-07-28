@@ -18,7 +18,7 @@ from lib import api
 from lib.ocr import *
 
 init(convert=True)
-match = "(is dropping [3-4] cards!)|(I'm dropping [3-4] cards since this server is currently active!)"
+match = "(is dropping [3-4] cards!)|(I'm dropping [3-4] cards since this server is currently active!)|(special event drop!)"
 path_to_ocr = "temp"
 v = "v2.3.2"
 if "v" in v:
@@ -48,6 +48,7 @@ autodrop = config["autodrop"]
 debug = config["debug"]
 cprint = config["check_print"]
 verbose = config["very_verbose"]
+prioritize_watermelon = config.get("event_settings", {}).get("prioritize_watermelon", True)
 if cprint:
     pn = int(config["print_number"])
 if autodrop:
@@ -72,6 +73,7 @@ class Main(discord.Client):
         self.collected = 0
         self.cardnum = 0
         self.buttons = None
+        self.watermelon_pos = None
 
     async def on_ready(self):
         if title:
@@ -167,8 +169,15 @@ class Main(discord.Client):
             dprint("Whishlisted card detected")
 
         if self.timer == 0 and re.search(match, message.content):
+            self.watermelon_pos = None
             with open("temp\\card.webp", "wb") as file:
                 file.write(requests.get(message.attachments[0].url).content)
+            
+            # Check for watermelon event
+            is_watermelon_event = "special event drop" in message.content.lower()
+            img = Image.open("temp\\card.webp")
+            width, height = img.size
+            
             if filelength("temp\\card.webp") == 836:
                 self.cardnum = 3
                 for a in range(3):
@@ -191,13 +200,23 @@ class Main(discord.Client):
                             f"{path_to_ocr}\\char\\print{a + 1}.png"
                         )
             else:
-                self.cardnum = 4
-                for a in range(4):
+                # Determine if it's a regular 4-card drop or event with watermelon
+                if width == 836 and height < 400:  # Regular 4-card drop
+                    self.cardnum = 4
+                else:  # Event drop with watermelon
+                    self.cardnum = 5
+                    # Watermelon is usually in the 5th position (index 4)
+                    self.watermelon_pos = 4
+                    # Check if watermelon is in 4th position instead
+                    if height < 500:
+                        self.watermelon_pos = 3
+
+                for a in range(self.cardnum):
                     await get_card(
                         f"{path_to_ocr}\\card{a + 1}.png", "temp\\card.webp", a
                     )
 
-                for a in range(4):
+                for a in range(self.cardnum):
                     await get_top(
                         f"{path_to_ocr}\\card{a + 1}.png",
                         f"{path_to_ocr}\\char\\top{a + 1}.png"
@@ -219,7 +238,9 @@ class Main(discord.Client):
             anilist = []
             printlist = []
             for img in onlyfiles:
-                if "4" in img and self.cardnum != 4:
+                if "4" in img and self.cardnum < 4:
+                    continue
+                if "5" in img and self.cardnum < 5:
                     continue
                 if "top" in img:
                     custom_config = r"--psm 6 --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@&0123456789/:- "
@@ -273,6 +294,8 @@ class Main(discord.Client):
             vprint(f"Printlist: {printlist}")
 
             def emoji(b):
+                if self.watermelon_pos is not None and b == self.watermelon_pos:
+                    return "🍉"
                 match b:
                     case 0:
                         return "1️⃣"
@@ -282,7 +305,36 @@ class Main(discord.Client):
                         return "3️⃣"
                     case 3:
                         return "4️⃣"
+                    case 4:
+                        return "5️⃣"
 
+            # First check for watermelon option if enabled
+            if self.watermelon_pos is not None and prioritize_watermelon:
+                tprint(f"{Fore.GREEN}[{message.channel.name}] Found Watermelon Event - Prioritizing Grab{Fore.RESET}")
+                self.url = message.attachments[0].url
+                if loghits:
+                    with open("log.txt", "a") as ff:
+                        if timestamp:
+                            ff.write(
+                                f"{current_time()} - Watermelon Event - {self.url}\n"
+                            )
+                        else:
+                            ff.write(f"Watermelon Event - {self.url}\n")
+                if isbutton(cid):
+                    await self.wait_for("message_edit", check=mcheck)
+                    await asyncio.sleep(random.uniform(0.55, 1.08))
+                    await self.buttons[self.watermelon_pos].click()
+                    await self.afterclick()
+                else:
+                    reaction = await self.wait_for(
+                        "reaction_add", check=check
+                    )
+                    await self.react_add(reaction, emoji(self.watermelon_pos))
+                return  # Skip normal card processing if we grabbed watermelon
+            elif self.watermelon_pos is not None:
+                tprint(f"{Fore.YELLOW}[{message.channel.name}] Watermelon Event detected but skipping (disabled in config){Fore.RESET}")
+
+            # Normal card processing
             for i, character in enumerate(charlist):
                 if (
                         api.isSomething(character, self.chars, accuracy)
@@ -450,8 +502,9 @@ class Main(discord.Client):
             if bruh.watch():
                 with open("config.json") as ff:
                     config = json.load(ff)
-                    global accuracy
+                    global accuracy, prioritize_watermelon
                     accuracy = float(config["accuracy"])
+                    prioritize_watermelon = config.get("event_settings", {}).get("prioritize_watermelon", True)
 
     async def autodrop(self):
         channel = self.get_channel(autodropchannel)
